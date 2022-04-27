@@ -1,6 +1,7 @@
 ﻿// Learn more about F# at http://fsharp.org
 
 open System
+open ScrabbleGod
 
 let time f =
     let start = System.DateTime.Now
@@ -51,13 +52,12 @@ let main argv =
         Some (Dictionary.empty, Dictionary.insert, Dictionary.step, None) 
 
     // Uncomment this line to call your client
-    // let players    = [("Your name here", YourClientName.Scrabble.startGame)]
+    //let players    = [("bob", ScrabbleGod.Scrabble.startGame)]
     let (dictionary, time) =
         time (fun () -> ScrabbleUtil.Dictionary.mkDict words dictAPI)
 
     let players = spawnMultiples "OxyphenButazone" dictionary Oxyphenbutazone.Scrabble.startGame 4
-
-
+   
     do ScrabbleServer.Comm.startGame 
           board dictionary handSize timeout tiles seed port players
     

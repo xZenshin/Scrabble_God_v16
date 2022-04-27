@@ -1,4 +1,4 @@
-﻿namespace YourClientName
+﻿namespace ScrabbleGod
 
 open ScrabbleUtil
 open ScrabbleUtil.ServerCommunication
@@ -48,8 +48,12 @@ module State =
         hand          : MultiSet.MultiSet<uint32>
     }
 
-    let mkState b d pn h = {board = b; dict = d;  playerNumber = pn; hand = h }
+    let updateHand (ms: (uint32 * uint32) list) (newPieces: (uint32 * uint32) list) (currentHand: MultiSet.MultiSet<uint32>) = 
+        (ms |> List.fold(fun cH b -> MultiSet.remove (fst b) (snd b) cH) currentHand
+        |> List.fold(fun cH a -> MultiSet.add (fst a) (snd a) cH)) newPieces
+        
 
+    let mkState b d pn h = {board = b; dict = d;  playerNumber = pn; hand = h }
     let board st         = st.board
     let dict st          = st.dict
     let playerNumber st  = st.playerNumber
@@ -77,7 +81,9 @@ module Scrabble =
             match msg with
             | RCM (CMPlaySuccess(ms, points, newPieces)) ->
                 (* Successful play by you. Update your state (remove old tiles, add the new ones, change turn, etc) *)
-                
+                let mss = ms |> List.map(fun (_, (pid, (char, pv) )) -> (pid,1u))
+
+                let newHand = State.updateHand mss newPieces st.hand
                 let st' = st // This state needs to be updated
                 aux st'
             | RCM (CMPlayed (pid, ms, points)) ->
@@ -96,8 +102,8 @@ module Scrabble =
         aux st
 
     let startGame 
-            (boardP : boardProg) 
-            (dictf : bool -> Dictionary.Dict) 
+            (boardP : boardProg)
+            (dictf : bool -> Dictionary.Dict)  
             (numPlayers : uint32) 
             (playerNumber : uint32) 
             (playerTurn  : uint32) 
