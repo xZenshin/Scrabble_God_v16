@@ -1,7 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <PropertyGroup>
+	  <RepositoryUrl>https://github.com/jesper-bengtson/Scrabble-FP2022/</RepositoryUrl>
+	  <TargetFramework>net6.0</TargetFramework>
+	  <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+	  <Company>IT University of Copenhagen</Company>
+
+	  <Version>1.0.0</Version>
+	  <PackageId>ScrabbleGod</PackageId>
+	  <AssemblyName>ScrabbleGod</AssemblyName>
+	  <Product>ScrabbleGod</Product>
     </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +24,9 @@
     <Compile Include="Parser.fs" />
     <Compile Include="Scrabble.fsi" />
     <Compile Include="Scrabble.fs" />
+	<Compile Include="Dict.fsi" />
+	<Compile Include="Dict.fs" />
+
   </ItemGroup>
 
   <ItemGroup>

@@ -3,7 +3,7 @@
 
 module internal StateMonad
 
-    type Error = 
+ type Error = 
         | VarExists of string
         | VarNotFound of string
         | IndexOutOfBounds of int
@@ -48,13 +48,19 @@ module internal StateMonad
     let push : SM<unit> = 
         S (fun s -> Success ((), {s with vars = Map.empty :: s.vars}))
 
-    let pop : SM<unit> = failwith "Not implemented"      
+    let removeyes list =
+        match list with
+        | [] -> []
+        | x::xs -> xs
+    
+    let pop : SM<unit> = S (fun s -> Success ((), {s with vars = removeyes s.vars}))     
 
-    let wordLength : SM<int> = failwith "Not implemented"      
+    let wordLength : SM<int> = S (fun s -> Success(s.word.Length, s))  
 
-    let characterValue (pos : int) : SM<char> = failwith "Not implemented"      
+    let characterValue (pos : int) : SM<char> =  S (fun s -> if pos < s.word.Length then Success(fst(List.item pos s.word),s) else Failure(IndexOutOfBounds pos)) 
 
-    let pointValue (pos : int) : SM<int> = failwith "Not implemented"      
+    let pointValue (pos : int) : SM<int> = S (fun s -> if (pos < s.word.Length && pos >=0) then Success(snd(List.item pos s.word),s) else Failure(IndexOutOfBounds pos)) 
+  
 
     let lookup (x : string) : SM<int> = 
         let rec aux =
@@ -70,5 +76,5 @@ module internal StateMonad
               | Some v -> Success (v, s)
               | None   -> Failure (VarNotFound x))
 
-    let declare (var : string) : SM<unit> = failwith "Not implemented"   
-    let update (var : string) (value : int) : SM<unit> = failwith "Not implemented"      
+   let declare (var : string) : SM<unit> = failwith "Not implemented"   
+   let update (var : string) (value : int) : SM<unit> = failwith "Not implemented"      

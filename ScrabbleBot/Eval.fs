@@ -4,8 +4,38 @@ module internal Eval
 
     open StateMonad
 
-    let add a b = failwith "Not implemented"      
-    let div a b = failwith "Not implemented"      
+    (* Code for testing *)
+
+    let hello = [('H', 4);('E',1);('L',1);('L',1);('O',1)] 
+    let state = mkState [("x", 5); ("y", 42)] hello ["_pos_"; "_result_"]
+    let emptyState = mkState [] [] []
+    
+    let add a b = a >>= fun x ->
+                  b >>= fun y ->
+                  ret(x+y)   
+    let subtract a b = a >>= fun x ->
+                  b >>= fun y ->
+                  ret(x-y)
+
+    let multiply a b = a >>= fun x ->
+                  b >>= fun y ->
+                  ret(x*y)
+    let modulo a b = a >>= fun x ->
+                  b >>= fun y ->
+                  if y <> 0 then ret(x%y) else fail DivisionByZero  
+
+    let div a b = a >>= fun x ->
+                  b >>= fun y ->
+                  if y <> 0 then ret(x/y) else fail DivisionByZero  
+    let greater a b = a >>= fun x ->
+                  b >>= fun y ->
+                  if x > y then ret true else ret false
+    let conjunction a b = a >>= fun x ->
+                  (b >>= fun y ->
+                  ret(x && y))
+    let equal a b = a >>= fun x ->
+                  (b >>= fun y ->
+                  ret(x = y))
 
     type aExp =
         | N of int
@@ -32,12 +62,12 @@ module internal Eval
 
        | AEq of aExp * aExp   (* numeric equality *)
        | ALt of aExp * aExp   (* numeric less than *)
-
        | Not of bExp          (* boolean not *)
        | Conj of bExp * bExp  (* boolean conjunction *)
 
        | IsVowel of cExp      (* check for vowel *)
-       | IsConsonant of cExp  (* check for constant *)
+       | IsLetter of cExp     (* check for letter *)
+       | IsDigit of cExp      (* check for digit *)
 
     let (.+.) a b = Add (a, b)
     let (.-.) a b = Sub (a, b)
@@ -57,11 +87,56 @@ module internal Eval
     let (.>=.) a b = ~~(a .<. b)                (* numeric greater than or equal to *)
     let (.>.) a b = ~~(a .=. b) .&&. (a .>=. b) (* numeric greater than *)    
 
-    let arithEval a : SM<int> = failwith "Not implemented"      
+    let binop f a b s =
+        a s >>= fun x ->
+        b s >>= fun y ->
+        ret (f x y)
 
-    let charEval c : SM<char> = failwith "Not implemented"      
+    let find x = fun s ->
+        match Map.tryFind x s with
+        | Some v -> Success (v, s)
+        | None -> Failure (VarNotFound x)
 
-    let boolEval b : SM<bool> = failwith "Not implemented"
+    let rec arithEval a : SM<int> = 
+            match a with
+            | N n -> ret n
+            | V x -> lookup x
+            | WL -> wordLength
+            | PV x -> arithEval x >>= pointValue
+            | Add (a1, a2) -> add (arithEval a1) (arithEval a2)
+            | Sub (a1, a2) -> subtract (arithEval a1) (arithEval a2)
+            | Mul (a1, a2) -> multiply (arithEval a1) (arithEval a2)
+            | Div (a1, a2) -> div (arithEval a1) (arithEval a2) 
+            | Mod (a1, a2) -> modulo (arithEval a1) (arithEval a2)
+            | CharToInt c ->  charEval c >>= fun x -> ret(int x)
+    and charEval c : SM<char> = 
+            match c with
+            | C c -> ret c
+            | CV a -> arithEval a >>= characterValue
+            | ToUpper c -> charEval c >>= (System.Char.ToUpper >> ret)
+            | ToLower c -> charEval c >>= (System.Char.ToLower >> ret)
+            | IntToChar a -> arithEval a >>= fun x -> ret(char x)
+          
+
+    let rec boolEval b : SM<bool> = 
+            match b with
+            | TT -> ret true                
+            | FF  -> ret false          
+            | AEq (a1, a2) -> equal (arithEval a1) (arithEval a2)
+            | ALt (a1, a2) ->  greater (arithEval a1) (arithEval a2)
+            | Not b -> boolEval b >>= fun x -> ret(not(x))
+            | Conj (b1, b2) -> conjunction (boolEval b1) (boolEval b2)
+            | IsVowel c -> charEval c >>=
+                function
+                | 'A' -> ret true
+                | 'E' -> ret true
+                | 'I' -> ret true
+                | 'O' -> ret true
+                | 'U' -> ret true
+                | 'Y' -> ret true
+                | _ -> ret false
+            | IsLetter c ->  charEval c >>= (System.Char.IsLetter >> ret)
+            | IsDigit c ->  charEval c >>= (System.Char.IsDigit >> ret)
 
 
     type stm =                (* statements *)
@@ -92,11 +167,11 @@ module internal Eval
 
     let stmntEval2 stm = failwith "Not implemented"
 
-(* Part 4 *) 
+(* Part 4 (Optional) *) 
 
     type word = (char * int) list
     type squareFun = word -> int -> int -> Result<int, Error>
-
+        
     let stmntToSquareFun stm = failwith "Not implemented"
 
 
