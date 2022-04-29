@@ -98,7 +98,7 @@ module internal Parser
     type square = Map<int, squareFun>
     
     type boardFun2 = coord -> Result<square option, Error>
-        
+    
     type board = {
         center        : coord
         defaultSquare : square
