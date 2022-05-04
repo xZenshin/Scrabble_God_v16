@@ -85,18 +85,44 @@ module internal Parser
     let CVParse = pCharValue >*>. parenthesise AexpParse |>> CV <?> "CV"
     
     do cref := choice [cIntToChar; CVParse; cToUpper; cToLower; CParse]
+
+    let BAndOrParse, baoref = createParserForwardedToRef<bExp>()
+    let BCompareParse, bcref = createParserForwardedToRef<bExp>()
+    let bParse, bref = createParserForwardedToRef<bExp>()
+
+
+    let bAnd = binop (pstring @"/\" ) BCompareParse BAndOrParse |>> Conj 
+    let bOr = binop (pstring @"\/") BCompareParse BAndOrParse |>> fun (x, y) -> Not(Conj(Not x, Not y))
+    do baoref := choice [bAnd; bOr; BCompareParse]
+
+    let bEq = binop (pchar '=') TermParse TermParse |>> AEq
+    let bNeg = binop (pstring "<>") TermParse TermParse |>> (fun (x, y) -> Not(AEq(x, y)))
+    let bLessThan = binop (pchar '<') TermParse TermParse |>> ALt
+    let bLessThanEq = binop (pstring "<=") TermParse TermParse |>> (fun (x, y) -> Not(Not(Conj(Not(ALt(x, y)), Not(AEq(x, y))))))
+    let bGreater = binop (pstring ">") TermParse TermParse |>> (fun (x, y) -> Not(Not(Conj(Not(ALt(x, y)), Not(AEq(x, y))))))
+    let bGreaterThanEq = binop (pstring ">=") TermParse TermParse |>> (fun (x, y) -> Not(ALt(x, y)))
+    do bcref := choice [bEq; bNeg; bLessThan; bLessThanEq; bGreater; bGreaterThanEq; bParse]
+    
+    let bIsLetter = pIsLetter >>. parenthesise SomeParse |>> IsLetter
+    let bTrue = pTrue |>> (fun x -> TT)
+    let bFalse = pFalse |>> (fun x -> FF) 
+    let bNot = unop (pchar '~') BAndOrParse |>> Not 
+    let bPar = parenthesise BAndOrParse
+    do bref := choice [bNot; bTrue; bFalse; bPar]
     let CexpParse = SomeParse
 
 
-    let BexpParse = pstring "not implemented"
+    let BexpParse = BAndOrParse
 
-    let stmntParse = pstring "not implemented"
+    let stmntParse = pstring "not implemented"  
 
     (* The rest of your parser goes here *)
     type word   = (char * int) list
     type squareFun = word -> int -> int -> Result<int, Error>
     type square = Map<int, squareFun>
     
+    let parseSquareProg sqp sq = Map.map(fun k v ->  run stmntParse v ) sqp
+
     type boardFun2 = coord -> Result<square option, Error>
     
     type board = {
