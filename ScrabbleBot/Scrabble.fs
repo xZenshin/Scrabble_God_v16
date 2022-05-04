@@ -43,7 +43,7 @@ module State =
 
     type state = {
         board         : Parser.board
-        boardState: Map<coord, (uint32 * (char * int))>
+        boardState    : Map<coord, (uint32 * (char * int))>
         dict          : ScrabbleUtil.Dictionary.Dict
         playerNumber  : uint32
         hand          : MultiSet.MultiSet<uint32>
@@ -60,9 +60,10 @@ module State =
         List.fold (fun acc next -> Map.add (fst next) (snd next) acc) prevState newMoves
 
     let nextPlayer (pl: List<uint32>) (cp: uint32) = 
-        
         if cp+1u = uint32 pl.Length then 0u
         else cp+1u
+
+
 
     let mkState b bs d pn h pl cp = {board = b; boardState = bs; dict = d;  playerNumber = pn; hand = h; playerList = pl; currentPlayer = cp}
     let boardState st    = st.boardState
@@ -108,10 +109,13 @@ module Scrabble =
                 aux st'
             | RCM (CMPlayed (pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
-                let st' = st // This state needs to be updated
+                let newBoardState = State.updateBoardState st.boardState ms
+                let nextPlayer = State.nextPlayer st.playerList st.currentPlayer
+
+
+                let st' = State.mkState st.board newBoardState st.dict pid st.hand st.playerList nextPlayer
                 aux st'
             | RCM (CMPlayFailed (pid, ms)) ->
-                (* Failed play. Update your state *)
                 let st' = st // This state needs to be updated
                 aux st'
             | RCM (CMGameOver _) -> ()
