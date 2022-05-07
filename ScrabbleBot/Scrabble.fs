@@ -4,6 +4,8 @@ open ScrabbleUtil
 open ScrabbleUtil.ServerCommunication
 
 open System.IO
+open Dictionary
+open MultiSet
 
 open ScrabbleUtil.DebugPrint
 
@@ -51,19 +53,23 @@ module State =
         currentPlayer : uint32
     }
 
+  
 
-    let updateHand (ms: (uint32 * uint32) list) (newPieces: (uint32 * uint32) list) (currentHand: MultiSet.MultiSet<uint32>) = 
-        (ms |> List.fold(fun cH b -> MultiSet.remove (fst b) (snd b) cH) currentHand
-        |> List.fold(fun cH a -> MultiSet.add (fst a) (snd a) cH)) newPieces
+   
 
+   
+        
+    let removePieces (ms: (uint32 * uint32) list) (currentHand: MultiSet.MultiSet<uint32>) =
+        ms |> List.fold(fun cH b -> MultiSet.remove (fst b) (snd b) cH) currentHand
+    let addPieces (newPieces: (uint32 * uint32) list) (currentHand: MultiSet.MultiSet<uint32>) = 
+       (currentHand |> List.fold(fun cH a -> MultiSet.add (fst a) (snd a) cH)) newPieces
     let updateBoardState prevState newMoves =
         List.fold (fun acc next -> Map.add (fst next) (snd next) acc) prevState newMoves
 
     let nextPlayer (pl: List<uint32>) (cp: uint32) = 
         if cp+1u = uint32 pl.Length then 0u
         else cp+1u
-
-
+    
 
     let mkState b bs d pn h pl cp = {board = b; boardState = bs; dict = d;  playerNumber = pn; hand = h; playerList = pl; currentPlayer = cp}
     let boardState st    = st.boardState
@@ -77,16 +83,76 @@ module State =
 module Scrabble =
     open System.Threading
 
+    type Direction = 
+    // Up and Left are the wrong direction for words and only used when going in reverse with GADDAG
+    | Up of int * int
+    | Down of int * int
+    | Left of int * int
+    | Right of int * int
+
+
+    let moveInDirection direction = 
+        match direction with
+        | Up (x,y) -> (x,y+1)
+        | Down(x,y) -> (x,y-1)
+        | Left(x,y) -> (x-1,y)
+        | Right(x,y) -> (x+1,y)
+
+    
+        
+    let findFirstMove (dict : Dictionary.Dict) (st: State.state) (pc: Map<uint32, 'a>) (dirToMove:Direction) (start:coord)  = 
+        let rec inner (dict : Dictionary.Dict) (hand: MultiSet.MultiSet<uint32>) (board: Map<coord, (uint32 * (char * int))>) (ms: ((coord * uint32 * (char * int)) list)) ((x,y): coord) =
+           //Folding over our hand trying to generate a list of words
+           hand |> MultiSet.fold (fun wordList charId _ -> //Disregarding if you have more than one of the same letter atm
+
+                                   let c = Map.find charId pc |> Seq.head |> fst //finding the char from the pieces set 
+                                   let pv = Map.find charId pc |> Seq.head |> snd //finding the point value 
+
+                                   let coord = moveInDirection dirToMove//trying to move in a direction (Set to Right atm)
+
+                                   match Map.tryFind coord board with
+                                   | Some _ -> wordList //blocked tile -> returning current list of words
+                                   | None -> 
+                                        let stepDict = step c dict
+                                        let stepHand = MultiSet.removeSingle charId hand
+
+                                        match stepDict with
+                                        | Some(b, d) -> //if char allows a word to be completed
+                                            let word = (ms@[(x,y), charId, (c, pv)])
+                                            if b then
+                                                word::wordList@(inner d stepHand board word coord)
+                                            else 
+                                                wordList@(inner d stepHand board word coord)
+                                        | None -> wordList
+
+                                       
+            )
+            List.empty
+        inner dict st.hand st.boardState List.empty start
+
     let playGame cstream pieces (st : State.state) =
 
         let rec aux (st : State.state) =
             Print.printHand pieces (State.hand st)
-
+            
             // remove the force print when you move on from manual input (or when you have learnt the format)
             forcePrint "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
-            let input =  System.Console.ReadLine()
-            let move = RegEx.parseMove input
+            //let input =  System.Console.ReadLine()
+            //let move = RegEx.parseMove input
 
+            
+
+            let moves = let result = findFirstMove st.dict st pieces (Right(0,0)) (0,0)
+                        result |> List.map (fun moveList ->
+                                List.map (fun (coord, id, letters) -> coord, (id, letters)) moveList
+                            ) 
+            let move = moves.Head
+            let debugPause = true
+            
+            if(debugPause) then
+                debugPrint (sprintf "Press enter to play %A \n" move)
+                let input = System.Console.ReadLine()
+                ()
             debugPrint (sprintf "Player %d -> Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
             send cstream (SMPlay move)
 
@@ -99,8 +165,8 @@ module Scrabble =
 
                 //Extracting piece ID and count 
                 let mss = ms |> List.map(fun (_, (pid, (char, pv) )) -> (pid,1u))
-
-                let newHand = State.updateHand mss newPieces st.hand
+                let hand_removed = State.removePieces mss st.hand
+                let newHand = State.addPieces newPieces hand_removed
                 let newBoardState = State.updateBoardState st.boardState ms
                 let nextPlayer = State.nextPlayer st.playerList st.currentPlayer
 
