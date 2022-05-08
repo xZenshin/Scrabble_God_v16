@@ -13,6 +13,7 @@
     </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="HiddenDict.fs" />
     <Compile Include="MultiSet.fsi" />
     <Compile Include="MultiSet.fs" />
     <Compile Include="FParsecLight.fsi" />
@@ -23,9 +24,9 @@
     <Compile Include="Parser.fsi" />
     <Compile Include="Parser.fs" />
     <Compile Include="Scrabble.fsi" />
+    <Compile Include="Dict.fsi" />
+    <Compile Include="Dict.fs" />
     <Compile Include="Scrabble.fs" />
-	<Compile Include="Dict.fsi" />
-	<Compile Include="Dict.fs" />
 
   </ItemGroup>
 

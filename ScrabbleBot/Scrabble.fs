@@ -130,6 +130,29 @@ module Scrabble =
             List.empty
         inner dict st.hand st.boardState List.empty start
 
+    let findWordsInDirection (cord: coord) (st: State.state) (dirToMove: Direction) (dict: Dictionary.Dict) = 
+        let rec inner (cord: coord) (dict: Dict) (accList: List<string>) (accWord: string) = 
+        
+            let nextCord = moveInDirection dirToMove 
+
+            match Map.tryFind nextCord st.boardState with
+            | Some (x,z) -> 
+                let stepDict = step (fst z) dict
+                let word = accWord + ((fst z).ToString())
+
+                match stepDict with
+                | Some(x,y) when x ->  
+                    inner nextCord y (word::accList) word
+
+                | Some(x,y) -> inner nextCord y accList word
+
+                | None -> accList
+            | None _ -> accList
+
+        inner cord dict List.empty ""
+
+
+
     let playGame cstream pieces (st : State.state) =
 
         let rec aux (st : State.state) =
@@ -140,13 +163,13 @@ module Scrabble =
             //let input =  System.Console.ReadLine()
             //let move = RegEx.parseMove input
 
-            
+            //if st.playerNumber = st.currentPlayer ?? then make move så ikke alle gør på samme tid idk
 
             let moves = let result = findFirstMove st.dict st pieces (Right(0,0)) (0,0)
                         result |> List.map (fun moveList ->
                                 List.map (fun (coord, id, letters) -> coord, (id, letters)) moveList
                             ) 
-            let move = moves.Head
+            let move = if moves.Length = 0 then [] else moves.Head
             let debugPause = true
             
             if(debugPause) then
@@ -154,7 +177,11 @@ module Scrabble =
                 let input = System.Console.ReadLine()
                 ()
             debugPrint (sprintf "Player %d -> Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
-            send cstream (SMPlay move)
+            let play = 
+                match move with
+                |[] -> send cstream (SMPass)
+                |x::xs -> send cstream (SMPlay xs)
+               
 
             let msg = recv cstream
             debugPrint (sprintf "Player %d <- Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
@@ -185,6 +212,9 @@ module Scrabble =
                 let st' = st // This state needs to be updated
                 aux st'
             | RCM (CMGameOver _) -> ()
+            |RCM (CMPassed (playerID)) ->
+                let st' = {st with currentPlayer = State.nextPlayer st.playerList st.currentPlayer }
+                aux st'
             | RCM a -> failwith (sprintf "not implmented: %A" a)
             | RGPE err -> printfn "Gameplay Error:\n%A" err; aux st
 
