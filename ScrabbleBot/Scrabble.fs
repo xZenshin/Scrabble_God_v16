@@ -150,8 +150,28 @@ module Scrabble =
             | None _ -> accList
 
         inner cord dict List.empty ""
+    
+    //For generating moves after the initial word has been placed
+    let generateMove st pieces =
+        Map.fold (fun acc (x,y) (_, (c, _)) -> (                         
+                            //No gaddag so we can only check up and left to get words that are placed downwards and to the right
+                            let rWords = findWordsInDirection (x,y) st (Left(x,y)) st.dict
+                            let rDict = rWords |> List.fold(fun acc ele -> Dictionary.insert ele acc) (Dictionary.empty ())
+                            
+                            let dWords = findWordsInDirection (x,y) st (Up(x,y)) st.dict
+                            let dDict = dWords |> List.fold(fun acc ele -> Dictionary.insert ele acc) (Dictionary.empty ())
+                            let mdk = Dictionary.empty ()
 
-
+                            let rightList = match (Dictionary.step c rDict) with
+                                            | Some (_, d) -> findFirstMove d st pieces (Right(x,y)) (x+1,y) 
+                                            | None -> acc
+                            let downList =  match (Dictionary.step c dDict) with
+                                            | Some (_, d) -> findFirstMove d st pieces (Down(x,y)) (x,y+1) 
+                                            | None -> acc
+                            rightList @ downList                        
+                            
+                )) List.empty st.boardState
+    
 
     let playGame cstream pieces (st : State.state) =
 
