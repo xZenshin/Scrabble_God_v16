@@ -99,7 +99,7 @@ module Scrabble =
         | Right -> (x+1,y)
 
     
-        
+    //TODO: Change to only work for first move -> No need to see if there is anything on the board
     let findFirstMove (dict : Dictionary.Dict) (st: State.state) (pc: Map<uint32, 'a>) (dirToMove:Direction) (start:coord)  = 
         let rec inner (dict : Dictionary.Dict) (hand: MultiSet.MultiSet<uint32>) (board: Map<coord, (uint32 * (char * int))>) (ms: ((coord * uint32 * (char * int)) list)) ((x,y): coord) =
            //Folding over our hand trying to generate a list of words
