@@ -13,7 +13,6 @@
     </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="HiddenDict.fs" />
     <Compile Include="MultiSet.fsi" />
     <Compile Include="MultiSet.fs" />
     <Compile Include="FParsecLight.fsi" />

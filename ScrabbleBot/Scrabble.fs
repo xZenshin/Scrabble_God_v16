@@ -85,18 +85,18 @@ module Scrabble =
 
     type Direction = 
     // Up and Left are the wrong direction for words and only used when going in reverse with GADDAG
-    | Up of int * int
-    | Down of int * int
-    | Left of int * int
-    | Right of int * int
+    | Up 
+    | Down
+    | Left
+    | Right
 
 
-    let moveInDirection direction = 
+    let moveInDirection direction (x,y): coord= 
         match direction with
-        | Up (x,y) -> (x,y+1)
-        | Down(x,y) -> (x,y-1)
-        | Left(x,y) -> (x-1,y)
-        | Right(x,y) -> (x+1,y)
+        | Up -> (x,y+1)
+        | Down -> (x,y-1)
+        | Left -> (x-1,y)
+        | Right -> (x+1,y)
 
     
         
@@ -108,7 +108,7 @@ module Scrabble =
                                    let c = Map.find charId pc |> Seq.head |> fst //finding the char from the pieces set 
                                    let pv = Map.find charId pc |> Seq.head |> snd //finding the point value 
 
-                                   let coord = moveInDirection dirToMove//trying to move in a direction (Set to Right atm)
+                                   let coord = moveInDirection dirToMove (x,y)//trying to move in a direction (Set to Right atm)
 
                                    match Map.tryFind coord board with
                                    | Some _ -> wordList //blocked tile -> returning current list of words
@@ -133,9 +133,9 @@ module Scrabble =
     let findWordsInDirection (cord: coord) (st: State.state) (dirToMove: Direction) (dict: Dictionary.Dict) = 
         let rec inner (cord: coord) (dict: Dict) (accList: List<string>) (accWord: string) = 
         
-            let nextCord = moveInDirection dirToMove 
+            let nextCord = moveInDirection dirToMove cord
 
-            match Map.tryFind nextCord st.boardState with
+            match Map.tryFind cord st.boardState with
             | Some (x,z) -> 
                 let stepDict = step (fst z) dict
                 let word = accWord + ((fst z).ToString())
@@ -150,7 +150,7 @@ module Scrabble =
             | None _ -> accList
 
         inner cord dict List.empty ""
-    
+    (*
     //For generating moves after the initial word has been placed
     let generateMove st pieces =
         Map.fold (fun acc (x,y) (_, (c, _)) -> (                         
@@ -171,6 +171,8 @@ module Scrabble =
                             rightList @ downList                        
                             
                 )) List.empty st.boardState
+                *)
+                
     
 
     let playGame cstream pieces (st : State.state) =
@@ -185,11 +187,15 @@ module Scrabble =
 
             //if st.playerNumber = st.currentPlayer ?? then make move så ikke alle gør på samme tid idk
 
-            let moves = let result = findFirstMove st.dict st pieces (Right(0,0)) (0,0)
+            let moves = let result = findFirstMove st.dict st pieces Right (0,0)
                         result |> List.map (fun moveList ->
                                 List.map (fun (coord, id, letters) -> coord, (id, letters)) moveList
-                            ) 
+                            )
+
             let move = if moves.Length = 0 then [] else moves.Head
+
+  
+
             let debugPause = true
             
             if(debugPause) then
@@ -200,7 +206,7 @@ module Scrabble =
             let play = 
                 match move with
                 |[] -> send cstream (SMPass)
-                |x::xs -> send cstream (SMPlay xs)
+                |_ -> send cstream (SMPlay move)
                
 
             let msg = recv cstream
@@ -217,8 +223,12 @@ module Scrabble =
                 let newBoardState = State.updateBoardState st.boardState ms
                 let nextPlayer = State.nextPlayer st.playerList st.currentPlayer
 
+                
 
                 let st' = State.mkState st.board newBoardState st.dict st.playerNumber newHand st.playerList nextPlayer
+                let toPrint = findWordsInDirection (0,0) st' Right st.dict
+                debugprint
+
                 aux st'
             | RCM (CMPlayed (pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
