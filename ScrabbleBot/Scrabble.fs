@@ -114,7 +114,7 @@ module Scrabble =
                                    | Some _ -> wordList //blocked tile -> returning current list of words
                                    | None -> 
                                         let stepDict = step c dict
-                                        let stepHand = MultiSet.removeSingle charId hand
+                                        let stepHand = MultiSet.remove charId (Map.find charId hand) hand
 
                                         match stepDict with
                                         | Some(b, d) -> //if char allows a word to be completed
@@ -192,7 +192,7 @@ module Scrabble =
                                 List.map (fun (coord, id, letters) -> coord, (id, letters)) moveList
                             )
 
-            let move = if moves.Length = 0 then [] else moves.Head
+            let move = if moves.Length = 0 then [] else moves.[moves.Length-1]
 
   
 
@@ -227,7 +227,7 @@ module Scrabble =
 
                 let st' = State.mkState st.board newBoardState st.dict st.playerNumber newHand st.playerList nextPlayer
                 let toPrint = findWordsInDirection (0,0) st' Right st.dict
-                debugprint
+                debugPrint(sprintf "YALLAH Bro %A" toPrint)
 
                 aux st'
             | RCM (CMPlayed (pid, ms, points)) ->
