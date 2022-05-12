@@ -162,20 +162,26 @@ module Scrabble =
     
 
     let findAlreadyPlacedWords (st: State.state) (dir: Direction) ((x,y): coord) =
-        let rec inner (dict : Dictionary.Dict) (board: Map<coord, (uint32 * (char * int))>) (cord: coord) =
-
-                                      let coord = moveInDirection dir cord//trying to move in a direction
-
-                                      match Map.tryFind cord board with
-                                      | Some(x,y)         
-        inner st.dict st.boardState (x,y)
+         let rec inner ((x,y):coord) (dict:Dictionary.Dict) = 
+            let newCoord = moveInDirection dir (x,y)
+            
+            let newLetter = Map.tryFind newCoord st.boardState
+            
+            match newLetter with
+            | Some (_,c) ->
+                 match (Dictionary.step (fst c) dict) with
+                                          | Some (_, d) -> inner newCoord d
+                                          | None -> failwith "Failed (should never happen)"
+                           
+            | None -> dict
+         inner (x,y) st.dict
 
     let findMoveOnBoard (st: State.state) (pieces: Map<uint32, 'a>) = 
         Map.fold(fun moves (x,y) (_, (c, _)) -> //change this shit in the fold
-            //let leftDict = st Left (x,y)
-            //let upDict = 
-            let right = findGenericMove st.dict st pieces Right (x,y)
-            let down = findGenericMove st.dict st pieces Down (x,y)
+            let leftDict = findAlreadyPlacedWords st Left (x,y)
+            let upDict = findAlreadyPlacedWords st Up (x,y)
+            let right = findGenericMove leftDict st pieces Right (x,y)
+            let down = findGenericMove upDict st pieces Down (x,y)
 
             let combined = combineResult right down
 
