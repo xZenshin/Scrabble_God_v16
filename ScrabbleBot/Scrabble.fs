@@ -100,25 +100,21 @@ module Scrabble =
 
     
     //TODO: Change to only work for first move -> No need to see if there is anything on the board
-    let findFirstMove (dict : Dictionary.Dict) (st: State.state) (pc: Map<uint32, 'a>) (dirToMove:Direction) (start:coord)  = 
-        let rec inner (dict : Dictionary.Dict) (hand: MultiSet.MultiSet<uint32>) (board: Map<coord, (uint32 * (char * int))>) (ms: ((coord * uint32 * (char * int)) list)) ((x,y): coord) =
+    let findFirstMove (dict : Dictionary.Dict) (st: State.state) (pc: Map<uint32, 'a>)  = 
+        let rec inner (dict : Dictionary.Dict) (hand: MultiSet.MultiSet<uint32>) (board: Map<coord, (uint32 * (char * int))>) (ms: ((coord * uint32 * (char * int)) list)) (cord: coord) =
            //Folding over our hand trying to generate a list of words
            hand |> MultiSet.fold (fun wordList charId _ -> //Disregarding if you have more than one of the same letter atm
 
-                                   let c = Map.find charId pc |> Seq.head |> fst //finding the char from the pieces set 
-                                   let pv = Map.find charId pc |> Seq.head |> snd //finding the point value 
+                                      let c = Map.find charId pc |> Seq.head |> fst //finding the char from the pieces set 
+                                      let pv = Map.find charId pc |> Seq.head |> snd //finding point value
+                                      let coord = moveInDirection Right cord//trying to move in a direction (Set to Right atm)
 
-                                   let coord = moveInDirection dirToMove (x,y)//trying to move in a direction (Set to Right atm)
+                                      let stepDict = step c dict
+                                      let stepHand = MultiSet.remove charId (Map.find charId hand) hand
 
-                                   match Map.tryFind coord board with
-                                   | Some _ -> wordList //blocked tile -> returning current list of words
-                                   | None -> 
-                                        let stepDict = step c dict
-                                        let stepHand = MultiSet.remove charId (Map.find charId hand) hand
-
-                                        match stepDict with
+                                      match stepDict with
                                         | Some(b, d) -> //if char allows a word to be completed
-                                            let word = (ms@[(x,y), charId, (c, pv)])
+                                            let word = (ms@[cord, charId, (c, pv)])
                                             if b then
                                                 word::wordList@(inner d stepHand board word coord)
                                             else 
@@ -128,7 +124,7 @@ module Scrabble =
                                        
             )
             List.empty
-        inner dict st.hand st.boardState List.empty start
+        inner dict st.hand st.boardState List.empty (0,0)
 
     let findWordsInDirection (cord: coord) (st: State.state) (dirToMove: Direction) (dict: Dictionary.Dict) = 
         let rec inner (cord: coord) (dict: Dict) (accList: List<string>) (accWord: string) = 
@@ -187,7 +183,7 @@ module Scrabble =
 
             //if st.playerNumber = st.currentPlayer ?? then make move så ikke alle gør på samme tid idk
 
-            let moves = let result = findFirstMove st.dict st pieces Right (0,0)
+            let moves = let result = findFirstMove st.dict st pieces
                         result |> List.map (fun moveList ->
                                 List.map (fun (coord, id, letters) -> coord, (id, letters)) moveList
                             )
