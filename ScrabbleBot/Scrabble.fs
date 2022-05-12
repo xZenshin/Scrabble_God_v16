@@ -124,6 +124,41 @@ module Scrabble =
             List.empty
         inner dict st.hand st.boardState List.empty (0,0)
 
+
+        
+    let findGenericMove (dict : Dictionary.Dict) (st: State.state) (pc: Map<uint32, 'a>) (dirToMove: Direction) (cords: coord) = 
+        let rec inner (dict : Dictionary.Dict) (hand: MultiSet.MultiSet<uint32>) (board: Map<coord, (uint32 * (char * int))>) (ms: ((coord * uint32 * (char * int)) list)) (cord: coord) =
+           //Folding over our hand trying to generate a list of words
+           hand |> MultiSet.fold (fun wordList charId _ -> //Disregarding if you have more than one of the same letter atm
+
+                                      let c = Map.find charId pc |> Seq.head |> fst //finding the char from the pieces set 
+                                      let pv = Map.find charId pc |> Seq.head |> snd //finding point value
+                                      let coord = moveInDirection dirToMove cord//trying to move in a direction
+
+                                      match Map.tryFind coord board with
+                                      | Some (x,(char,y)) -> //if shit is on the board we step into it
+                                            let stepDict = step char dict
+                                            match stepDict with 
+                                            | Some (_, dict) -> 
+                                                inner dict hand board ms coord
+                                            | None _ -> failwith "the incident"
+                                      | None _ -> 
+                                            let stepDict = step c dict
+                                            let stepHand = MultiSet.remove charId (Map.find charId hand) hand
+
+                                            match stepDict with
+                                            | Some(bool, dict) ->
+                                                let word = (ms@[(cord, charId, (c, pv))])
+                                                if bool then
+                                                    word::wordList@(inner dict stepHand board word coord)
+                                                else 
+                                                    wordList@(inner dict stepHand board word coord)
+                                            | None -> wordList
+
+            )
+            List.empty
+        inner dict st.hand st.boardState List.empty (0,0)
+
     let findWordsInDirection (cord: coord) (st: State.state) (dirToMove: Direction) (dict: Dictionary.Dict) = 
         let rec inner (cord: coord) (dict: Dict) (accList: List<string>) (accWord: string) = 
         
@@ -210,7 +245,7 @@ module Scrabble =
             | RCM (CMPlaySuccess(ms, points, newPieces)) ->
                 (* Successful play by you. Update your state (remove old tiles, add the new ones, change turn, etc) *)
 
-                //Extracting piece ID and count 
+                //Extracting piece ID and count for removal 
                 let mss = ms |> List.map(fun (_, (pid, (char, pv) )) -> (pid,1u))
                 let hand_removed = State.removePieces mss st.hand
                 let newHand = State.addPieces newPieces hand_removed
