@@ -120,8 +120,6 @@ module Scrabble =
                                             else 
                                                 wordList@(inner d stepHand board word coord)
                                         | None -> wordList
-
-                                       
             )
             List.empty
         inner dict st.hand st.boardState List.empty (0,0)
