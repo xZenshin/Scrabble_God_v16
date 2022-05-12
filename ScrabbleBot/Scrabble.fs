@@ -92,8 +92,8 @@ module Scrabble =
 
     let moveInDirection direction (x,y): coord= 
         match direction with
-        | Up -> (x,y+1)
-        | Down -> (x,y-1)
+        | Up -> (x,y-1)
+        | Down -> (x,y+1)
         | Left -> (x-1,y)
         | Right -> (x+1,y)
     
@@ -136,13 +136,13 @@ module Scrabble =
                                       let pv = Map.find charId pc |> Seq.head |> snd //finding point value
                                       let coord = moveInDirection dirToMove cord//trying to move in a direction
 
-                                      match Map.tryFind coord board with
+                                      match Map.tryFind cord board with
                                       | Some (x,(char,y)) -> //if shit is on the board we step into it
                                             let stepDict = step char dict
                                             match stepDict with 
                                             | Some (_, dict) -> 
                                                 inner dict hand board ms coord
-                                            | None _ -> failwith "the incident"
+                                            | None _ -> wordList
                                       | None _ -> 
                                             let stepDict = step c dict
                                             let stepHand = MultiSet.remove charId (Map.find charId hand) hand
@@ -213,13 +213,19 @@ module Scrabble =
             //let move = RegEx.parseMove input
 
             //if st.playerNumber = st.currentPlayer ?? then make move så ikke alle gør på samme tid idk
-            
-            
-            YOOOOOOOOOOOOOOOOOOOO
+                        
+            let res = if st.boardState.IsEmpty then findFirstMove st.dict st pieces
+                        else 
+                        findMoveOnBoard st pieces
+            let moves = res |> List.map (fun moveList ->
+                                List.map (fun (coord, id, letters) -> coord, (id, letters)) moveList
+                            )             
+
+            let move = if moves.Length = 0 then [] else moves.[0]
 
   
 
-            let debugPause = true
+            let debugPause = false
             
             if(debugPause) then
                 debugPrint (sprintf "Press enter to play %A \n" move)
