@@ -168,10 +168,7 @@ module Scrabble =
 
             let combined = combineResult right down
 
-            if combined.IsEmpty then
-                failwith "lol no moves"
-            else
-                combined
+            combined
             
             ) 
             List.empty st.boardState
