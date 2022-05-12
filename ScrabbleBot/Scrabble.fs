@@ -58,7 +58,6 @@ module State =
    
 
    
-        
     let removePieces (ms: (uint32 * uint32) list) (currentHand: MultiSet.MultiSet<uint32>) =
         ms |> List.fold(fun cH b -> MultiSet.remove (fst b) (snd b) cH) currentHand
     let addPieces (newPieces: (uint32 * uint32) list) (currentHand: MultiSet.MultiSet<uint32>) = 
@@ -97,7 +96,9 @@ module Scrabble =
         | Down -> (x,y-1)
         | Left -> (x-1,y)
         | Right -> (x+1,y)
-
+    
+    let combineResult right down = 
+       right |> List.fold(fun acc rightWord -> rightWord::acc) List.empty |> List.fold(fun acc downWord -> downWord::acc) down
     
     //TODO: Change to only work for first move -> No need to see if there is anything on the board
     let findFirstMove (dict : Dictionary.Dict) (st: State.state) (pc: Map<uint32, 'a>)  = 
@@ -158,27 +159,24 @@ module Scrabble =
             )
             List.empty
         inner dict st.hand st.boardState List.empty (0,0)
+    
+    let findMoveOnBoard (st: State.state) (pieces: Map<uint32, 'a>) = 
+        Map.fold(fun moves (x,y) (_, (c, _)) -> //change this shit in the fold
+            
+            let right = findGenericMove st.dict st pieces Right (x,y)
+            let down = findGenericMove st.dict st pieces Down (x,y)
 
-    let findWordsInDirection (cord: coord) (st: State.state) (dirToMove: Direction) (dict: Dictionary.Dict) = 
-        let rec inner (cord: coord) (dict: Dict) (accList: List<string>) (accWord: string) = 
-        
-            let nextCord = moveInDirection dirToMove cord
+            let combined = combineResult right down
 
-            match Map.tryFind cord st.boardState with
-            | Some (x,z) -> 
-                let stepDict = step (fst z) dict
-                let word = accWord + ((fst z).ToString())
+            if combined.IsEmpty then
+                failwith "lol no moves"
+            else
+                combined
+            
+            ) 
+            List.empty st.boardState
 
-                match stepDict with
-                | Some(x,y) when x ->  
-                    inner nextCord y (word::accList) word
 
-                | Some(x,y) -> inner nextCord y accList word
-
-                | None -> accList
-            | None _ -> accList
-
-        inner cord dict List.empty ""
     (*
     //For generating moves after the initial word has been placed
     let generateMove st pieces =
@@ -200,9 +198,9 @@ module Scrabble =
                             rightList @ downList                        
                             
                 )) List.empty st.boardState
-                *)
                 
-    
+                
+    *)
 
     let playGame cstream pieces (st : State.state) =
 
@@ -215,13 +213,9 @@ module Scrabble =
             //let move = RegEx.parseMove input
 
             //if st.playerNumber = st.currentPlayer ?? then make move så ikke alle gør på samme tid idk
-
-            let moves = let result = findFirstMove st.dict st pieces
-                        result |> List.map (fun moveList ->
-                                List.map (fun (coord, id, letters) -> coord, (id, letters)) moveList
-                            )
-
-            let move = if moves.Length = 0 then [] else moves.[moves.Length-1]
+            
+            
+            YOOOOOOOOOOOOOOOOOOOO
 
   
 
@@ -255,9 +249,6 @@ module Scrabble =
                 
 
                 let st' = State.mkState st.board newBoardState st.dict st.playerNumber newHand st.playerList nextPlayer
-                let toPrint = findWordsInDirection (0,0) st' Right st.dict
-                debugPrint(sprintf "YALLAH Bro %A" toPrint)
-
                 aux st'
             | RCM (CMPlayed (pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
