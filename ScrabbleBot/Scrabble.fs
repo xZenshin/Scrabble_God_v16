@@ -158,11 +158,22 @@ module Scrabble =
 
             )
             List.empty
-        inner dict st.hand st.boardState List.empty (0,0)
+        inner dict st.hand st.boardState List.empty cords
     
+
+    let findAlreadyPlacedWords (st: State.state) (dir: Direction) ((x,y): coord) =
+        let rec inner (dict : Dictionary.Dict) (board: Map<coord, (uint32 * (char * int))>) (cord: coord) =
+
+                                      let coord = moveInDirection dir cord//trying to move in a direction
+
+                                      match Map.tryFind cord board with
+                                      | Some(x,y)         
+        inner st.dict st.boardState (x,y)
+
     let findMoveOnBoard (st: State.state) (pieces: Map<uint32, 'a>) = 
         Map.fold(fun moves (x,y) (_, (c, _)) -> //change this shit in the fold
-            
+            //let leftDict = st Left (x,y)
+            //let upDict = 
             let right = findGenericMove st.dict st pieces Right (x,y)
             let down = findGenericMove st.dict st pieces Down (x,y)
 
@@ -220,10 +231,11 @@ module Scrabble =
 
             let move = if moves.Length = 0 then [] else moves.[0]
 
-  
+            
 
             let debugPause = false
-            
+            let toChange = MultiSet.ofList((MultiSet.toList st.hand)[0..(int (MultiSet.size st.hand))])
+            let changeeed =  (toChange|> MultiSet.toList)
             if(debugPause) then
                 debugPrint (sprintf "Press enter to play %A \n" move)
                 let input = System.Console.ReadLine()
@@ -231,7 +243,7 @@ module Scrabble =
             debugPrint (sprintf "Player %d -> Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
             let play = 
                 match move with
-                |[] -> send cstream (SMPass)
+                |[] -> send cstream (SMChange changeeed)
                 |_ -> send cstream (SMPlay move)
                
 
@@ -263,6 +275,13 @@ module Scrabble =
                 aux st'
             | RCM (CMPlayFailed (pid, ms)) ->
                 let st' = st // This state needs to be updated
+                aux st'
+
+            |RCM (CMChangeSuccess(newTiles)) ->
+                
+                let hand_removed = MultiSet.empty
+                let newHand = State.addPieces newTiles hand_removed
+                let st' = {st with hand = newHand}
                 aux st'
             | RCM (CMGameOver _) -> ()
             |RCM (CMPassed (playerID)) ->
