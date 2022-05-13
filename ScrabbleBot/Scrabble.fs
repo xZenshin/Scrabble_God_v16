@@ -161,6 +161,12 @@ module Scrabble =
         inner dict st.hand st.boardState List.empty cords
 
 
+    let goBack (dir: Direction) ((x,y): coord) = 
+        match dir with
+        | Left -> (x + 1,y)
+        | Up -> (x, y + 1)
+        | _ -> failwith "gg"
+    
     let findAlreadyPlacedWords (st: State.state) (dir: Direction) ((x,y): coord) =
         let rec inner (board: Map<coord, (uint32 * (char * int))>) (cord: coord)  (accString: List<char>)=
 
@@ -168,28 +174,21 @@ module Scrabble =
 
                                       match Map.tryFind cord board with
                                       | Some(_,(char,_)) ->
-                                        let toSend = char::accString
+                                        let toSend = char::accString       
                                         inner board coord toSend
-                                      | None -> accString
+                                      | None -> goBack dir cord
         inner st.boardState (x,y) List.empty
 
-        
-    let getDictReady (dict: Dictionary.Dict) (chars: List<char>) = 
-       List.fold(fun dictt char -> 
-            match (step char dictt) with
-            | Some (_,dict) -> dict
-            | None -> failwith "idk failed or som eshit"
-       ) dict chars
+
 
     let findMoveOnBoard (st: State.state) (pieces: Map<uint32, 'a>) = 
         Map.fold(fun moves (x,y) (_, (c, _)) -> //change this shit in the fold
             
-            let placedChars = findAlreadyPlacedWords st Left (x,y)
-            let rightDict = getDictReady st.dict placedChars
-            let downDict = getDictReady st.dict placedChars
+            let cordLeft = findAlreadyPlacedWords st Left (x,y)
+            let cordUp = findAlreadyPlacedWords st Up (x,y)
 
-            let right = findGenericMove rightDict st pieces Right (x,y)
-            let down = findGenericMove downDict st pieces Down (x,y)
+            let right = findGenericMove st.dict st pieces Right cordLeft
+            let down = findGenericMove st.dict st pieces Down cordUp
 
             let combined = combineResult right down
 
