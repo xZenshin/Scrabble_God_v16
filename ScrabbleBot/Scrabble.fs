@@ -52,12 +52,7 @@ module State =
         playerList    : List<uint32>
         currentPlayer : uint32
     }
-
   
-
-   
-
-   
     let removePieces (ms: (uint32 * uint32) list) (currentHand: MultiSet.MultiSet<uint32>) =
         ms |> List.fold(fun cH b -> MultiSet.remove (fst b) (snd b) cH) currentHand
     let addPieces (newPieces: (uint32 * uint32) list) (currentHand: MultiSet.MultiSet<uint32>) = 
@@ -69,7 +64,6 @@ module State =
         if cp+1u = uint32 pl.Length then 0u
         else cp+1u
     
-
     let mkState b bs d pn h pl cp = {board = b; boardState = bs; dict = d;  playerNumber = pn; hand = h; playerList = pl; currentPlayer = cp}
     let boardState st    = st.boardState
     let board st         = st.board
@@ -83,12 +77,10 @@ module Scrabble =
     open System.Threading
 
     type Direction = 
-    // Up and Left are the wrong direction for words and only used when going in reverse with GADDAG
     | Up 
     | Down
     | Left
     | Right
-
 
     let moveInDirection direction (x,y): coord= 
         match direction with
@@ -102,11 +94,10 @@ module Scrabble =
     
     let findFirstMove (dict : Dictionary.Dict) (st: State.state) (pc: Map<uint32, 'a>)  = 
         let rec inner (dict : Dictionary.Dict) (hand: MultiSet.MultiSet<uint32>) (board: Map<coord, (uint32 * (char * int))>) (ms: ((coord * uint32 * (char * int)) list)) (cord: coord) =
-           //Folding over our hand trying to generate a list of words
            hand |> MultiSet.fold (fun wordList charId _ -> //Disregarding if you have more than one of the same letter atm
 
                                       let (c,pv) = Map.find charId pc |> Seq.head 
-                                      let coord = moveInDirection Right cord//trying to move in a direction (Set to Right atm)
+                                      let coord = moveInDirection Right cord
 
                                       let stepDict = step c dict
                                       let stepHand = MultiSet.remove charId (Map.find charId hand) hand
@@ -127,14 +118,13 @@ module Scrabble =
         
     let findGenericMove (dict : Dictionary.Dict) (st: State.state) (pc: Map<uint32, 'a>) (dirToMove: Direction) (cords: coord) = 
         let rec inner (dict : Dictionary.Dict) (hand: MultiSet.MultiSet<uint32>) (board: Map<coord, (uint32 * (char * int))>) (ms: ((coord * uint32 * (char * int)) list)) (cord: coord) =
-           //Folding over our hand trying to generate a list of words
            hand |> MultiSet.fold (fun wordList charId _ -> //Disregarding if you have more than one of the same letter atm
            
                                       let (c,pv) = Map.find charId pc |> Seq.head 
-                                      let coord = moveInDirection dirToMove cord//trying to move in a direction
+                                      let coord = moveInDirection dirToMove cord
 
                                       match Map.tryFind cord board with
-                                      | Some (x,(char,y)) -> //if shit is on the board we step into it
+                                      | Some (x,(char,y)) -> 
                                             let stepDict = step char dict
                                             match stepDict with 
                                             | Some (_, dict) -> 
@@ -152,11 +142,9 @@ module Scrabble =
                                                 else 
                                                     wordList@(inner dict stepHand board word coord)
                                             | None -> wordList
-
             )
             List.empty
         inner dict st.hand st.boardState List.empty cords
-
 
     let goBack (dir: Direction) ((x,y): coord) = 
         match dir with
@@ -167,7 +155,7 @@ module Scrabble =
     let findAlreadyPlacedWords (st: State.state) (dir: Direction) ((x,y): coord) =
         let rec inner (board: Map<coord, (uint32 * (char * int))>) (cord: coord) =
 
-                                      let coord = moveInDirection dir cord//trying to move in a direction
+                                      let coord = moveInDirection dir cord
 
                                       match Map.tryFind cord board with
                                       | Some _ ->      
@@ -177,9 +165,9 @@ module Scrabble =
 
 
 
-    let findMoveOnBoard (st: State.state) (pieces: Map<uint32, 'a>) = 
-        Map.fold(fun moves (x,y) (_, (_, _)) -> //change this shit in the fold
-            
+    let findMove (st: State.state) (pieces: Map<uint32, 'a>) = 
+        Map.fold(fun moves (x,y) (_, (_, _)) -> 
+           
             let cordLeft = findAlreadyPlacedWords st Left (x,y)
             let cordUp = findAlreadyPlacedWords st Up (x,y)
 
@@ -206,26 +194,21 @@ module Scrabble =
                         
             let res = if st.boardState.IsEmpty then findFirstMove st.dict st pieces
                         else 
-                        findMoveOnBoard st pieces
+                        findMove st pieces
             let moves = res |> List.map (fun moveList ->
                                 List.map (fun (coord, id, letters) -> coord, (id, letters)) moveList
                             )             
 
-            let move = if moves.Length = 0 then [] else moves.[0]
+            let move = if moves.Length = 0 then [] else moves.[0] //just take the first move
 
             
 
-            let debugPause = false
-            let toChange = MultiSet.ofList((MultiSet.toList st.hand)[0..(int (MultiSet.size st.hand))])
-            let changeeed =  (toChange|> MultiSet.toList)
-            if(debugPause) then
-                debugPrint (sprintf "Press enter to play %A \n" move)
-                let input = System.Console.ReadLine()
-                ()
+            let toChange = MultiSet.toList st.hand //just change to whole hand
+
             debugPrint (sprintf "Player %d -> Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
             let play = 
                 match move with
-                |[] -> send cstream (SMChange changeeed)
+                |[] -> send cstream (SMChange toChange)
                 |_ -> send cstream (SMPlay move)
                
 
