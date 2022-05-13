@@ -131,7 +131,7 @@ module Scrabble =
         let rec inner (dict : Dictionary.Dict) (hand: MultiSet.MultiSet<uint32>) (board: Map<coord, (uint32 * (char * int))>) (ms: ((coord * uint32 * (char * int)) list)) (cord: coord) =
            //Folding over our hand trying to generate a list of words
            hand |> MultiSet.fold (fun wordList charId _ -> //Disregarding if you have more than one of the same letter atm
-
+           
                                       let c = Map.find charId pc |> Seq.head |> fst //finding the char from the pieces set 
                                       let pv = Map.find charId pc |> Seq.head |> snd //finding point value
                                       let coord = moveInDirection dirToMove cord//trying to move in a direction
@@ -159,23 +159,37 @@ module Scrabble =
             )
             List.empty
         inner dict st.hand st.boardState List.empty cords
-    
+
 
     let findAlreadyPlacedWords (st: State.state) (dir: Direction) ((x,y): coord) =
-        let rec inner (dict : Dictionary.Dict) (board: Map<coord, (uint32 * (char * int))>) (cord: coord) =
+        let rec inner (board: Map<coord, (uint32 * (char * int))>) (cord: coord)  (accString: List<char>)=
 
                                       let coord = moveInDirection dir cord//trying to move in a direction
 
                                       match Map.tryFind cord board with
-                                      | Some(x,y)         
-        inner st.dict st.boardState (x,y)
+                                      | Some(_,(char,_)) ->
+                                        let toSend = char::accString
+                                        inner board coord toSend
+                                      | None -> accString
+        inner st.boardState (x,y) List.empty
+
+        
+    let getDictReady (dict: Dictionary.Dict) (chars: List<char>) = 
+       List.fold(fun dictt char -> 
+            match (step char dictt) with
+            | Some (_,dict) -> dict
+            | None -> failwith "idk failed or som eshit"
+       ) dict chars
 
     let findMoveOnBoard (st: State.state) (pieces: Map<uint32, 'a>) = 
         Map.fold(fun moves (x,y) (_, (c, _)) -> //change this shit in the fold
-            //let leftDict = st Left (x,y)
-            //let upDict = 
-            let right = findGenericMove st.dict st pieces Right (x,y)
-            let down = findGenericMove st.dict st pieces Down (x,y)
+            
+            let placedChars = findAlreadyPlacedWords st Left (x,y)
+            let rightDict = getDictReady st.dict placedChars
+            let downDict = getDictReady st.dict placedChars
+
+            let right = findGenericMove rightDict st pieces Right (x,y)
+            let down = findGenericMove downDict st pieces Down (x,y)
 
             let combined = combineResult right down
 
