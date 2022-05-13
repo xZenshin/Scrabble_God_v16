@@ -100,14 +100,12 @@ module Scrabble =
     let combineResult right down = 
        right |> List.fold(fun acc rightWord -> rightWord::acc) List.empty |> List.fold(fun acc downWord -> downWord::acc) down
     
-    //TODO: Change to only work for first move -> No need to see if there is anything on the board
     let findFirstMove (dict : Dictionary.Dict) (st: State.state) (pc: Map<uint32, 'a>)  = 
         let rec inner (dict : Dictionary.Dict) (hand: MultiSet.MultiSet<uint32>) (board: Map<coord, (uint32 * (char * int))>) (ms: ((coord * uint32 * (char * int)) list)) (cord: coord) =
            //Folding over our hand trying to generate a list of words
            hand |> MultiSet.fold (fun wordList charId _ -> //Disregarding if you have more than one of the same letter atm
 
-                                      let c = Map.find charId pc |> Seq.head |> fst //finding the char from the pieces set 
-                                      let pv = Map.find charId pc |> Seq.head |> snd //finding point value
+                                      let (c,pv) = Map.find charId pc |> Seq.head 
                                       let coord = moveInDirection Right cord//trying to move in a direction (Set to Right atm)
 
                                       let stepDict = step c dict
@@ -132,8 +130,7 @@ module Scrabble =
            //Folding over our hand trying to generate a list of words
            hand |> MultiSet.fold (fun wordList charId _ -> //Disregarding if you have more than one of the same letter atm
            
-                                      let c = Map.find charId pc |> Seq.head |> fst //finding the char from the pieces set 
-                                      let pv = Map.find charId pc |> Seq.head |> snd //finding point value
+                                      let (c,pv) = Map.find charId pc |> Seq.head 
                                       let coord = moveInDirection dirToMove cord//trying to move in a direction
 
                                       match Map.tryFind cord board with
@@ -168,21 +165,20 @@ module Scrabble =
         | _ -> failwith "gg"
     
     let findAlreadyPlacedWords (st: State.state) (dir: Direction) ((x,y): coord) =
-        let rec inner (board: Map<coord, (uint32 * (char * int))>) (cord: coord)  (accString: List<char>)=
+        let rec inner (board: Map<coord, (uint32 * (char * int))>) (cord: coord) =
 
                                       let coord = moveInDirection dir cord//trying to move in a direction
 
                                       match Map.tryFind cord board with
-                                      | Some(_,(char,_)) ->
-                                        let toSend = char::accString       
-                                        inner board coord toSend
+                                      | Some _ ->      
+                                        inner board coord
                                       | None -> goBack dir cord
-        inner st.boardState (x,y) List.empty
+        inner st.boardState (x,y)
 
 
 
     let findMoveOnBoard (st: State.state) (pieces: Map<uint32, 'a>) = 
-        Map.fold(fun moves (x,y) (_, (c, _)) -> //change this shit in the fold
+        Map.fold(fun moves (x,y) (_, (_, _)) -> //change this shit in the fold
             
             let cordLeft = findAlreadyPlacedWords st Left (x,y)
             let cordUp = findAlreadyPlacedWords st Up (x,y)
@@ -198,42 +194,15 @@ module Scrabble =
             List.empty st.boardState
 
 
-    (*
-    //For generating moves after the initial word has been placed
-    let generateMove st pieces =
-        Map.fold (fun acc (x,y) (_, (c, _)) -> (                         
-                            //No gaddag so we can only check up and left to get words that are placed downwards and to the right
-                            let rWords = findWordsInDirection (x,y) st (Left(x,y)) st.dict
-                            let rDict = rWords |> List.fold(fun acc ele -> Dictionary.insert ele acc) (Dictionary.empty ())
-                            
-                            let dWords = findWordsInDirection (x,y) st (Up(x,y)) st.dict
-                            let dDict = dWords |> List.fold(fun acc ele -> Dictionary.insert ele acc) (Dictionary.empty ())
-                            let mdk = Dictionary.empty ()
-
-                            let rightList = match (Dictionary.step c rDict) with
-                                            | Some (_, d) -> findFirstMove d st pieces (Right(x,y)) (x+1,y) 
-                                            | None -> acc
-                            let downList =  match (Dictionary.step c dDict) with
-                                            | Some (_, d) -> findFirstMove d st pieces (Down(x,y)) (x,y+1) 
-                                            | None -> acc
-                            rightList @ downList                        
-                            
-                )) List.empty st.boardState
-                
-                
-    *)
-
     let playGame cstream pieces (st : State.state) =
 
         let rec aux (st : State.state) =
             Print.printHand pieces (State.hand st)
             
             // remove the force print when you move on from manual input (or when you have learnt the format)
-            forcePrint "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
+            //forcePrint "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
             //let input =  System.Console.ReadLine()
             //let move = RegEx.parseMove input
-
-            //if st.playerNumber = st.currentPlayer ?? then make move så ikke alle gør på samme tid idk
                         
             let res = if st.boardState.IsEmpty then findFirstMove st.dict st pieces
                         else 
@@ -296,6 +265,7 @@ module Scrabble =
                 let newHand = State.addPieces newTiles hand_removed
                 let st' = {st with hand = newHand}
                 aux st'
+
             | RCM (CMGameOver _) -> ()
             |RCM (CMPassed (playerID)) ->
                 let st' = {st with currentPlayer = State.nextPlayer st.playerList st.currentPlayer }
